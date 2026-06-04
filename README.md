@@ -70,6 +70,21 @@ Generate and verify a citation for a piece of prose. Give it a link (DOI, doi.or
 
 Without prose, it still generates and verifies the citation; the prose-support check is skipped.
 
+### `/kingbob:fix-latex-errors`
+
+Diagnose and fix LaTeX compilation errors and warnings — one pasted error, or a full sweep of the document.
+
+```
+/kingbob:fix-latex-errors [exact error or warning text] [main .tex file]
+```
+
+**What it does:**
+1. Detects the main `.tex` file and the intended engine/bibliography tool (latexmkrc, magic comments, fontspec → xelatex, biblatex → biber) — and never switches tooling just to make an error go away
+2. Recompiles with `-file-line-error` to get a fresh log; with a pasted error it confirms the error actually reproduces before diagnosing
+3. **Sweep mode** (no arguments): triages every issue by root cause — errors first (fixing the *first* error and recompiling rather than chasing cascades), then undefined references/citations, duplicate labels, package warnings, overfull boxes, font warnings — into a numbered report with severity, `file:line`, explanation, and concrete fix
+4. Applies safe, single-site mechanical fixes directly; **asks for a greenlight** before anything big — multi-site changes, preamble/package surgery, engine swaps, or anything touching content, wording, or layout
+5. Recompiles to verify each fix actually took, then reports: fixed / flagged awaiting your call / remaining with manual instructions, and the document's end state
+
 ## Project Structure
 
 ```
@@ -80,7 +95,8 @@ kingbob-claude-plugins/
 ├── .github/workflows/
 │   └── validate.yml         # CI: manifest + skill frontmatter validation
 ├── skills/
-│   └── cite/SKILL.md
+│   ├── cite/SKILL.md
+│   └── fix-latex-errors/SKILL.md
 ├── scripts/
 │   └── validate.py
 ├── CLAUDE.md                # Contributor rules: versioning + releases
