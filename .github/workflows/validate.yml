@@ -1,0 +1,17 @@
+name: Validate plugin
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate plugin metadata and skills
+        run: python3 scripts/validate.py

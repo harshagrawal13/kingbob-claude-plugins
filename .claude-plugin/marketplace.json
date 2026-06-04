@@ -1,0 +1,13 @@
+{
+  "name": "kingbob-claude-plugins",
+  "owner": {
+    "name": "Harsh Agrawal"
+  },
+  "plugins": [
+    {
+      "name": "kingbob",
+      "source": "./",
+      "description": "Harsh's personal Claude Code skills"
+    }
+  ]
+}
