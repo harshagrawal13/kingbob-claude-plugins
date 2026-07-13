@@ -85,6 +85,23 @@ Diagnose and fix LaTeX compilation errors and warnings — one pasted error, or 
 4. Applies safe, single-site mechanical fixes directly; **asks for a greenlight** before anything big — multi-site changes, preamble/package surgery, engine swaps, or anything touching content, wording, or layout
 5. Recompiles to verify each fix actually took, then reports: fixed / flagged awaiting your call / remaining with manual instructions, and the document's end state
 
+### `/kingbob:session-limit-guard`
+
+Run a long task without slamming into the 5-hour Claude session usage limit: pause automatically near the limit, sleep until the window resets, resume where it left off.
+
+```
+/kingbob:session-limit-guard [threshold%] <task to run>
+```
+
+**What it does:**
+1. Reads real session usage (5-hour + 7-day `used_percentage` and `resets_at`) from a local cache written by your statusline command — Claude Code sends the `rate_limits` block to the statusline after every API response, so no credentials, network calls, or undocumented APIs are involved
+2. Works on your task normally, re-checking usage after each subtask and every ~10–15 minutes
+3. At ≥ threshold (default 90%, i.e. 10% before the limit): finishes the current step to a safe point, writes an `slg-progress.md` resume file, announces when it will resume, and sleeps in a background process until ~2 minutes past the window reset
+4. On wake: verifies the window reset, re-reads the progress file, and continues — pausing again if a very long task spans multiple windows
+5. If the **weekly** limit is what's nearly exhausted, it parks the task and asks you instead of sleeping for days
+
+**One-time setup:** the skill needs a small cache block in your statusline script; on first run it installs this itself via `setup_statusline_cache.sh` (idempotent, keeps a `.bak`, prints manual instructions if your statusline isn't a plain shell script). Pro/Max subscriptions only — API-key sessions have no 5-hour limit.
+
 ## Project Structure
 
 ```
@@ -96,7 +113,10 @@ kingbob-claude-plugins/
 │   └── validate.yml         # CI: manifest + skill frontmatter validation
 ├── skills/
 │   ├── cite/SKILL.md
-│   └── fix-latex-errors/SKILL.md
+│   ├── fix-latex-errors/SKILL.md
+│   └── session-limit-guard/
+│       ├── SKILL.md
+│       └── scripts/         # check_usage.sh, wait_for_reset.sh, setup_statusline_cache.sh
 ├── scripts/
 │   └── validate.py
 ├── CLAUDE.md                # Contributor rules: versioning + releases
