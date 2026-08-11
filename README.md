@@ -70,6 +70,23 @@ Generate and verify a citation for a piece of prose. Give it a link (DOI, doi.or
 
 Without prose, it still generates and verifies the citation; the prose-support check is skipped.
 
+### `/kingbob:desktop-cleanup`
+
+Scan `~/Downloads`, `~/Developer`, `~/Documents`, and `~/Desktop` for stale, loose files and propose where each one should go — one file at a time, nothing moves or deletes without your approval.
+
+```
+/kingbob:desktop-cleanup
+```
+
+**What it does:**
+1. Loads (or, on first run, asks you to set up) three source-of-truth destinations: Media, Books, and Personal Docs
+2. Walks all four folders recursively via a bundled `scan.py` helper, skipping anything inside a git repo (any directory containing `.git`, at any depth, is never entered) plus standard build/dependency clutter (`node_modules`, `.venv`, `dist`, `.app` bundles, dotfiles)
+3. Flags a file as stale only once it's past its folder's age threshold (Downloads: 30 days; Developer/Documents/Desktop: 180 days) **and** has shown up in at least two scans — tracked in `~/.desktop-cleanup/history.json`, which also remembers anything you've already declined so it won't re-ask unless the file changes
+4. Classifies each stale file by extension/filename heuristics into Media, Books, Personal Docs, a new local subfolder, or Trash — surfacing low-confidence guesses rather than deciding silently, and learning your destination folders' existing naming conventions so files get renamed/placed consistently
+5. Before any move into a source-of-truth folder, checks for a same-name collision by file size only (never forces a cloud download to checksum) — proposing to Trash true duplicates and surfacing real conflicts to you
+6. Presents each file individually via a yes/no/decline prompt; approved moves happen immediately, approved deletes always go through Trash (never `rm`)
+7. Ends with a simple count of what moved, what got trashed, and what new folders were created
+
 ### `/kingbob:fix-latex-errors`
 
 Diagnose and fix LaTeX compilation errors and warnings — one pasted error, or a full sweep of the document.
@@ -96,6 +113,9 @@ kingbob-claude-plugins/
 │   └── validate.yml         # CI: manifest + skill frontmatter validation
 ├── skills/
 │   ├── cite/SKILL.md
+│   ├── desktop-cleanup/
+│   │   ├── SKILL.md
+│   │   └── scripts/scan.py
 │   └── fix-latex-errors/SKILL.md
 ├── scripts/
 │   └── validate.py
