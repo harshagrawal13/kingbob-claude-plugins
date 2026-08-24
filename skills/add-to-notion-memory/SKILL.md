@@ -99,10 +99,23 @@ query returns them) if you need a refresher; the shape is:
 trailing punctuation.
 
 **Tags** — pick from the options in the schema you fetched in Step 2 whenever
-one fits. Only propose a **new** option when nothing genuinely does, and show it
-to the user for a yes/no before creating it (Notion creates multi-select options
-on the fly, so a typo becomes a permanent option). Several tags are fine; zero
-is fine.
+one fits. Several tags are fine; zero is fine.
+
+Only propose a **new** option when nothing genuinely does, and get a yes/no
+before creating it — the option is permanent once added. Notion does **not**
+create multi-select options on the fly: passing an unknown tag to
+`notion-create-pages` is rejected outright with *"Value must be one of the
+following…"*. Add it to the schema first, then write the page:
+
+```
+notion-update-data-source →
+  ALTER COLUMN "<tags-prop>" SET MULTI_SELECT('existing1':color, …, 'new':color)
+```
+
+`ALTER COLUMN … SET` **replaces** the whole option list, so enumerate every
+existing option with its current color (both are in the Step 2 schema) and
+append the new one. Drop an option here and you strip it off every row that
+used it.
 
 **Status** — always `active` on a new entry. Set it explicitly rather than
 leaving it blank; the database's default view filters on this property, and a
@@ -130,8 +143,12 @@ Query the data source for existing rows before writing:
 ```sql
 SELECT url, "<title-prop>", "<tags-prop>", "<created-prop>"
 FROM "collection://<id>"
-WHERE "<status-prop>" IS NOT 'archived'
+WHERE "<status-prop>" IS NULL OR "<status-prop>" != ?
 ```
+
+with `params: ["archived"]`. Notion's SQL layer is stricter than SQLite —
+`IS NOT 'archived'` is rejected as unparseable, so the NULL case needs its own
+`IS NULL` arm rather than riding on `IS NOT`.
 
 Archived rows are excluded on purpose: if a near-match was archived, it was
 retired deliberately, and the right move is a fresh `active` row rather than
