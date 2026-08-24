@@ -85,37 +85,59 @@ Diagnose and fix LaTeX compilation errors and warnings — one pasted error, or 
 4. Applies safe, single-site mechanical fixes directly; **asks for a greenlight** before anything big — multi-site changes, preamble/package surgery, engine swaps, or anything touching content, wording, or layout
 5. Recompiles to verify each fix actually took, then reports: fixed / flagged awaiting your call / remaining with manual instructions, and the document's end state
 
-### `/kingbob:add-to-notion-memory`
+### `/kingbob:notion-pa`
 
-Save something worth remembering — a tool, a command, a macOS setting, a fix —
-into the private **claude memory** Notion database.
-
-```
-/kingbob:add-to-notion-memory [what to remember]
-```
-
-With no arguments it picks the memory-worthy result out of the current
-conversation and tells you what it chose before writing.
-
-**Setup:** the destination is never committed. Put the database link in
-`~/Developer/.env` (and `chmod 600` it):
+A personal assistant over the private Notion workspace — threads, projects,
+tasks, and memory.
 
 ```
-NOTION_CLAUDE_MEMORY_URL=<link to the claude memory Notion page>
+/kingbob:notion-pa [what to capture, or a question about what's live]
 ```
 
-Writes go through the Notion MCP connector; the skill stops loudly if either
-the variable or the connector is missing rather than guessing a database.
+*(Renamed from `/kingbob:add-to-notion-memory`, which absorbed into Route F. The old
+invocation no longer resolves.)*
 
-**What it does:**
-1. Reads only the `NOTION_CLAUDE_MEMORY_URL` line out of `~/Developer/.env`, then resolves that URL to the database's data source and its **live** schema — tag options and property names are re-read every run, never hardcoded
-2. Works out what to actually remember, resolving vague references ("that command", "the tool we just used") to the real thing in the conversation
-3. Drafts the row in the database's house style: emoji icon, `subject — what it does` title, a short body that leads with the source link and carries the exact runnable invocation, absolute dates. Any URL it didn't see in the conversation is fetched and confirmed before it's written — no plausible-looking dead links
-4. Picks tags from the existing options whenever one fits, and asks before creating a brand-new one — which means altering the multi-select schema first, re-listing every existing option and colour, since Notion rejects unknown tags rather than creating them on the fly
-5. Queries the database for near-duplicates by subject, skipping archived rows; if one is close, shows it alongside the draft and asks whether to merge into it or add a new row
-6. Previews the entry, creates it as `active`, and reports the resulting Notion URL — reporting any write failure verbatim, draft included
+**The model it serves:** *threads* are the nouns — ongoing strands of life, each
+with a written condition for what ends it. *Projects* are things built. *Tasks*
+are the verbs, spread across several databases, each carrying its own `Thread`
+relation. *Memory* is the scrapbook.
 
-**Archive, never delete.** Asking it to remove a memory flips that row's `Status` to `archived` instead of destroying it. The database's default view filters archived rows out, so it reads as deleted day to day, while the entry and its history survive in a separate Archived view. Real deletion is a Notion-UI action and the skill says so rather than doing it.
+**Setup:** nothing about the workspace is committed. Every database is resolved
+at runtime from `~/Developer/.env` (`chmod 600`):
+
+```
+NOTION_THREADS_URL=<link>
+NOTION_PROJECTS_URL=<link>
+NOTION_CLAUDE_MEMORY_URL=<link>
+NOTION_TASKS_ENCODE_URL=<link>
+NOTION_TASKS_PERSONAL_URL=<link>
+NOTION_TASKS_SIMRAN_PHD_URL=<link>
+```
+
+`NOTION_TASKS_*_URL` is a **prefix convention, not a fixed list** — every
+matching key is a Tasks database, so adding one later means adding a key rather
+than editing the skill. A missing key or a missing connector stops the run with
+the key name, rather than guessing at a database.
+
+**Routes:**
+
+| Route | For | Behaviour |
+|---|---|---|
+| **A — task** | "remind me to…" | Infers which Tasks database *and* which thread, states both in one line, writes. No round-trip on the frequent path. |
+| **B — thread** | a new ongoing strand | Refuses to open one without a written `What Resolution Looks Like`, and confirms before writing. |
+| **C — project** | something being built | Creates the row from the name, then stops — status, stack, timeline and links are facts about your work, so it asks rather than inferring. |
+| **D — briefing** | "what's live?" | Hand-rolls the rollup Notion can't do: reads every Tasks database, joins to threads, leads with overdue and owed. |
+| **E — hygiene** | "check my notion" | Unlinked tasks, threads with no resolution criteria, resolved threads with no outcome, and any Tasks database missing a key or a `Thread` relation. |
+| **F — memory** | a tool, command, or fix | The former `add-to-notion-memory`, intact: house style, live tags, duplicate check, archive-never-delete. |
+
+Each Tasks database has its **own** schema (one carries `Lead` and
+`Uni / Affiliation`, others carry `Tags`), so the skill reads each schema live
+and writes only properties that database actually has.
+
+`references/notion-mechanics.md` carries the connector's sharp edges — the SQL
+query quota and why view-mode reads are preferred, select options needing a
+schema alter, `status` vs `select`, and the fact that there is no delete path at
+all.
 
 ## Project Structure
 
@@ -127,9 +149,11 @@ kingbob-claude-plugins/
 ├── .github/workflows/
 │   └── validate.yml         # CI: manifest + skill frontmatter validation
 ├── skills/
-│   ├── add-to-notion-memory/SKILL.md
 │   ├── cite/SKILL.md
-│   └── fix-latex-errors/SKILL.md
+│   ├── fix-latex-errors/SKILL.md
+│   └── notion-pa/
+│       ├── SKILL.md
+│       └── references/notion-mechanics.md
 ├── scripts/
 │   └── validate.py
 ├── CLAUDE.md                # Contributor rules: versioning + releases
