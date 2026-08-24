@@ -1,8 +1,10 @@
 {
   "name": "kingbob",
-  "description": "Harsh's personal Claude Code skills — citation generation and verification, and more",
-  "version": "2.0.0",
+  "description": "Harsh's personal Claude Code skills \u2014 citation generation and verification, and more",
+  "version": "3.0.0",
   "authors": [
-    { "name": "Harsh Agrawal" }
+    {
+      "name": "Harsh Agrawal"
+    }
   ]
 }
