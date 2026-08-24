@@ -111,7 +111,7 @@ the variable or the connector is missing rather than guessing a database.
 1. Reads only the `NOTION_CLAUDE_MEMORY_URL` line out of `~/Developer/.env`, then resolves that URL to the database's data source and its **live** schema — tag options and property names are re-read every run, never hardcoded
 2. Works out what to actually remember, resolving vague references ("that command", "the tool we just used") to the real thing in the conversation
 3. Drafts the row in the database's house style: emoji icon, `subject — what it does` title, a short body that leads with the source link and carries the exact runnable invocation, absolute dates. Any URL it didn't see in the conversation is fetched and confirmed before it's written — no plausible-looking dead links
-4. Picks tags from the existing options whenever one fits, and asks before creating a brand-new one (Notion makes typos permanent)
+4. Picks tags from the existing options whenever one fits, and asks before creating a brand-new one — which means altering the multi-select schema first, re-listing every existing option and colour, since Notion rejects unknown tags rather than creating them on the fly
 5. Queries the database for near-duplicates by subject, skipping archived rows; if one is close, shows it alongside the draft and asks whether to merge into it or add a new row
 6. Previews the entry, creates it as `active`, and reports the resulting Notion URL — reporting any write failure verbatim, draft included
 
