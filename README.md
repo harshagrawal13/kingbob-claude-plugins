@@ -85,6 +85,36 @@ Diagnose and fix LaTeX compilation errors and warnings — one pasted error, or 
 4. Applies safe, single-site mechanical fixes directly; **asks for a greenlight** before anything big — multi-site changes, preamble/package surgery, engine swaps, or anything touching content, wording, or layout
 5. Recompiles to verify each fix actually took, then reports: fixed / flagged awaiting your call / remaining with manual instructions, and the document's end state
 
+### `/kingbob:add-to-notion-memory`
+
+Save something worth remembering — a tool, a command, a macOS setting, a fix —
+into the private **claude memory** Notion database.
+
+```
+/kingbob:add-to-notion-memory [what to remember]
+```
+
+With no arguments it picks the memory-worthy result out of the current
+conversation and tells you what it chose before writing.
+
+**Setup:** the destination is never committed. Put the database link in
+`~/Developer/.env` (and `chmod 600` it):
+
+```
+NOTION_CLAUDE_MEMORY_URL=<link to the claude memory Notion page>
+```
+
+Writes go through the Notion MCP connector; the skill stops loudly if either
+the variable or the connector is missing rather than guessing a database.
+
+**What it does:**
+1. Reads only the `NOTION_CLAUDE_MEMORY_URL` line out of `~/Developer/.env`, then resolves that URL to the database's data source and its **live** schema — tag options and property names are re-read every run, never hardcoded
+2. Works out what to actually remember, resolving vague references ("that command", "the tool we just used") to the real thing in the conversation
+3. Drafts the row in the database's house style: emoji icon, `subject — what it does` title, a short body that leads with the source link and carries the exact runnable invocation, absolute dates. Any URL it didn't see in the conversation is fetched and confirmed before it's written — no plausible-looking dead links
+4. Picks tags from the existing options whenever one fits, and asks before creating a brand-new one (Notion makes typos permanent)
+5. Queries the database for near-duplicates by subject; if one is close, shows it alongside the draft and asks whether to merge into it or add a new row
+6. Previews the entry, creates it, and reports the resulting Notion URL — reporting any write failure verbatim, draft included
+
 ## Project Structure
 
 ```
@@ -95,6 +125,7 @@ kingbob-claude-plugins/
 ├── .github/workflows/
 │   └── validate.yml         # CI: manifest + skill frontmatter validation
 ├── skills/
+│   ├── add-to-notion-memory/SKILL.md
 │   ├── cite/SKILL.md
 │   └── fix-latex-errors/SKILL.md
 ├── scripts/
