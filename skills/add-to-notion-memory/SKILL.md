@@ -1,6 +1,6 @@
 ---
 name: add-to-notion-memory
-description: Save something worth remembering to Harsh's private "claude memory" Notion database — a tool, a command, a setting, a fix. Pass the thing to remember inline; with no arguments it picks the memory-worthy result out of the current conversation and confirms before writing. Resolves the destination from NOTION_CLAUDE_MEMORY_URL in ~/Developer/.env, matches the database's house style, checks for near-duplicates, and previews the row before creating it. Use when the user says "add this to notion memory", "remember this in notion", "save that to my notion memory", or "/add-to-notion-memory ...".
+description: Save something worth remembering to Harsh's private "claude memory" Notion database — a tool, a command, a setting, a fix. Pass the thing to remember inline; with no arguments it picks the memory-worthy result out of the current conversation and confirms before writing. Resolves the destination from NOTION_CLAUDE_MEMORY_URL in ~/Developer/.env, matches the database's house style, checks for near-duplicates, and previews the row before creating it. Also retires entries on request by flipping their status to archived — never by deleting them. Use when the user says "add this to notion memory", "remember this in notion", "save that to my notion memory", "archive/remove that notion memory", or "/add-to-notion-memory ...".
 argument-hint: "[what to remember]"
 user-invocable: true
 allowed-tools: Bash(grep:*), Bash(test:*), WebFetch, AskUserQuestion, mcp__claude_ai_Notion__notion-fetch, mcp__claude_ai_Notion__notion-query-data-sources, mcp__claude_ai_Notion__notion-create-pages, mcp__claude_ai_Notion__notion-update-page
@@ -62,9 +62,10 @@ run rather than hardcoding it — the ID is private (same reason as the URL), an
 the tag options change over time.
 
 Expected shape (verify, don't assume): a title property, a multi-select tag
-property, and auto-managed created/last-edited timestamps. Read the **actual**
-property names out of the schema and use those; if the schema has drifted from
-what this skill expects, report what you found rather than forcing a write.
+property, a single-select status property (`active` / `archived`), and
+auto-managed created/last-edited timestamps. Read the **actual** property names
+out of the schema and use those; if the schema has drifted from what this skill
+expects, report what you found rather than forcing a write.
 
 ## Step 3 — Work out what to remember
 
@@ -103,6 +104,11 @@ to the user for a yes/no before creating it (Notion creates multi-select options
 on the fly, so a typo becomes a permanent option). Several tags are fine; zero
 is fine.
 
+**Status** — always `active` on a new entry. Set it explicitly rather than
+leaving it blank; the database's default view filters on this property, and a
+blank status is a row nobody sees. See *Retiring an entry* below for the only
+time it should be anything else.
+
 **Body** — short and concrete. In practice:
 
 - Lead with a markdown link to the source when there is one (repo, docs, post).
@@ -124,7 +130,13 @@ Query the data source for existing rows before writing:
 ```sql
 SELECT url, "<title-prop>", "<tags-prop>", "<created-prop>"
 FROM "collection://<id>"
+WHERE "<status-prop>" IS NOT 'archived'
 ```
+
+Archived rows are excluded on purpose: if a near-match was archived, it was
+retired deliberately, and the right move is a fresh `active` row rather than
+reviving a retired one. Rows with no status set still count — better a false
+duplicate prompt than a silent double entry.
 
 Compare the draft against the returned titles on subject, not wording — a new
 flag for a command already recorded is the *same* memory, not a new one.
@@ -148,8 +160,9 @@ create it with `notion-create-pages`, parented to the data source:
 { "type": "data_source_id", "data_source_id": "<id from Step 2>" }
 ```
 
-Set the title and tag properties by their real schema names. Do **not** set the
-created/last-edited timestamps; Notion manages them.
+Set the title, tag, and status properties by their real schema names — status
+`active` (Step 4). Do **not** set the created/last-edited timestamps; Notion
+manages them.
 
 No approval round-trip is needed for a normal add — write it, then report the
 resulting Notion page URL so the user can click through and correct anything.
@@ -159,3 +172,30 @@ Two things do warrant stopping first: creating a **new tag option** (Step 4) and
 Report failures verbatim. If the write is rejected, print Notion's error and
 the draft you tried to write, so nothing is lost — never report success you
 did not observe.
+
+## Retiring an entry — archive, never delete
+
+When the user asks to remove, delete, drop, or get rid of a memory, **do not
+destroy it**. Set its status property to `archived`:
+
+```
+notion-update-page → command: update_properties → { "<status-prop>": "archived" }
+```
+
+The database's default view filters archived rows out, so archiving is what
+"deleted" looks like day to day — but the entry, its body, and its history
+survive, and a separate Archived view still reaches it. Say plainly that you
+archived rather than deleted it, and where it went.
+
+Two supporting facts, so this isn't mistaken for timidity:
+
+- The Notion connector has **no** delete, trash, or archive-page tool at all —
+  `create-pages`, `duplicate-page`, `update-page`, `move-pages`, `fetch`, and
+  `query-data-sources` are the whole write surface. A status flip is the only
+  reversible retire available, and there is no destructive path to fall back to.
+- `notion-update-data-source` *can* drop a column or trash the whole data
+  source. Never reach for it to retire a row — that is schema surgery on the
+  entire database to remove one entry.
+
+If the user insists on real deletion, say it has to happen in the Notion UI
+(row → **Delete**, or **⋯ → Move to Trash**) and leave it to them.
