@@ -85,6 +85,36 @@ Diagnose and fix LaTeX compilation errors and warnings — one pasted error, or 
 4. Applies safe, single-site mechanical fixes directly; **asks for a greenlight** before anything big — multi-site changes, preamble/package surgery, engine swaps, or anything touching content, wording, or layout
 5. Recompiles to verify each fix actually took, then reports: fixed / flagged awaiting your call / remaining with manual instructions, and the document's end state
 
+### `/kingbob:kamaji`
+
+Keep every project that stores data on kamaji, Harsh's home server, on the same
+conventions, instead of each one inventing its own.
+
+```
+/kingbob:kamaji [what the app needs, or: add-app <name> | migrate | deploy <name> | check]
+```
+
+**Source of truth:** [harshagrawal13/kamaji-server](https://github.com/harshagrawal13/kamaji-server).
+The skill reads it first and defers to it; the skill only summarises it.
+
+**Conventions it applies:**
+- **One Postgres database per app**, and nothing crosses databases.
+- **Roles are `<app>_authenticator` + `<app>_anon`**, with a PostgREST per app behind
+  the `kamaji` Cloudflare Tunnel.
+- **An API that writes sits behind Cloudflare Access, and the origin checks the token
+  too.**
+- **Schema changes are dbmate migrations** in the app's own repo.
+- **kamaji is production only.** Tests use a fake or a throwaway local Postgres.
+
+**Routes:**
+- design storage for a project;
+- `add-app`;
+- `migrate` / `deploy`;
+- `check`, which reports drift between kamaji and kamaji-server and changes nothing.
+
+Anything that changes kamaji is confirmed first, and it never reads or prints
+PostgREST passwords.
+
 ### `/kingbob:notion-pa`
 
 A personal assistant over the private Notion workspace — threads, projects,
@@ -151,6 +181,7 @@ kingbob-claude-plugins/
 ├── skills/
 │   ├── cite/SKILL.md
 │   ├── fix-latex-errors/SKILL.md
+│   ├── kamaji/SKILL.md
 │   └── notion-pa/
 │       ├── SKILL.md
 │       └── references/notion-mechanics.md
